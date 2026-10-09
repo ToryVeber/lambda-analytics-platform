@@ -33,11 +33,11 @@ The company also runs parallel product experiments (A/B testing) and tracks fron
 ## 3. Non-Functional Requirements & SLA
 
 - **Data Volumes:** 
-  - *Batch Sources (OLTP, APIs):* 1 TB of historical data with a 5 GB daily increment.
-  - *Streaming Sources (Clickstream):* High-throughput web logs up to 1,000 RPS, averaging 10 GB of raw events per day.
+  - **Batch Sources (OLTP, APIs):** 1 TB of historical data with a 5 GB daily increment.
+  - **Streaming Sources (Clickstream):** High-throughput web logs up to 1,000 RPS, averaging 10 GB of raw events per day.
 - **Data Freshness (Latency):**
-  - *Marketing & Retention Marts (Batch):* Updated once a day, ready by 06:00 UTC.
-  - *A/B Testing & Technical Performance (Streaming):* Near Real-Time (NRT) updates with end-to-end latency under 30 seconds.
+  - **Marketing & Retention Marts (Batch):** Updated once a day, ready by 06:00 UTC.
+  - **A/B Testing & Technical Performance (Streaming):** Near Real-Time (NRT) updates with end-to-end latency under 30 seconds.
 - **Query Performance:** 
   - Analytical queries from BI tools to Gold data marts must execute within `< 1.5 seconds` on billion-row datasets.
 
