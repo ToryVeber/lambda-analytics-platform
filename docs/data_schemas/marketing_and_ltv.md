@@ -8,7 +8,7 @@ Landing zone for daily raw ad platform snapshots and database dumps stored as im
 * **S3 Location:** 
   - `s3://ecom-platform-bronze/google_ads_api/`
   - `s3://ecom-platform-bronze/yandex_direct_api/`
-  - `s3://ecom-platform-bronze/telegram_campaigns/`
+  - `s3://ecom-platform-bronze/telegram_ads_api/`
 * **Schema:**
 
   | Column Name | Data Type | Nullable | Description |
