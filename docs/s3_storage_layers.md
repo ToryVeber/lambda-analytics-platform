@@ -15,7 +15,7 @@ The landing zone for raw, immutable data. Directory naming is strictly organized
     *   📂 `year=2026/month=10/day=11/` ➔ 📄 *google_spend_*.json*
 *   📂 `yandex_direct_api/` - Daily ad spend data fetched via Yandex Direct API.
     *   📂 `year=2026/month=10/day=11/` ➔ 📄 *yandex_spend_*.json*
-*   📂 `s3://ecom-platform-bronze/telegram_campaigns/` - Manual or API expense logs for Telegram channels and bloggers.
+*   📂 `telegram_ads_api/` - Manual or API expense logs for Telegram channels and bloggers.
     *   📂 `year=2026/month=10/day=11/` ➔ 📄 *telegram_spend_*.json*
 *   📂 `crm_postgres_dump/` - Snapshot tables exported daily from the transactional OLTP system.
     *   📂 `year=2026/month=10/day=11/`
