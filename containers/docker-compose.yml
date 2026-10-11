@@ -1,6 +1,4 @@
 networks:
-  frontend_net:
-    name: ecom_frontend_network
   backend_net:
     name: ecom_backend_network
 
@@ -8,35 +6,6 @@ services:
   # ==========================================
   # LAYER 1: DATA INGESTION (FRONTEND CONTOUR)
   # ==========================================
-
-  init-snowplow-config:
-    image: alpine:latest
-    container_name: ecom_snowplow_config_init
-    volumes:
-      - ./snowplow_config:/source_config:ro
-      - snowplow_config_vol:/target_config
-    command: sh -c "cp /source_config/* /target_config/ && chmod -R 755 /target_config"
-    networks:
-      - backend_net
-
-  snowplow-micro:
-    image: snowplow/snowplow-micro:1.5.0
-    container_name: ecom_snowplow_collector
-    ports:
-      - "8082:8080"
-    command: [
-      "--collector-config", "/config/micro.conf",
-      "--iglu", "/config/iglu.json"
-    ]
-    volumes:
-      - snowplow_config_vol:/config
-    networks:
-      - frontend_net
-      - backend_net
-    depends_on:
-      - kafka
-      - init-snowplow-config
-    restart: unless-stopped
 
   kafka:
     image: apache/kafka:3.7.0
@@ -57,7 +26,6 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
-      - frontend_net
       - backend_net
     restart: unless-stopped
 
@@ -69,8 +37,14 @@ services:
     entrypoint: [ "/bin/sh", "-c" ]
     command: |
       "
-      kafka-topics.sh --bootstrap-server kafka:9092 --list
-      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic snowplow_web_events --partitions 3 --replication-factor 1
+      echo '⌛ Waiting for Kafka broker to be fully ready...'
+      until /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list > /dev/null 2>&1; do
+        sleep 2
+      done
+      
+      echo '🚀 Kafka is ready! Creating snowplow_web_events topic...'
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic snowplow_web_events --partitions 3 --replication-factor 1
+      echo '✅ Topic created successfully!'
       "
     networks:
       - backend_net
@@ -185,4 +159,3 @@ volumes:
   clickhouse_data:
   grafana_data:
   airflow_logs:
-  snowplow_config_vol:
