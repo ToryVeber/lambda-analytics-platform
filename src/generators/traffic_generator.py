@@ -4,6 +4,8 @@ import random
 import uuid
 from datetime import datetime
 from kafka import KafkaProducer
+import os
+from dotenv import load_dotenv
 
 KAFKA_BOOTSTRAP_SERVER = "127.0.0.1:9094"
 KAFKA_TOPIC = "snowplow_web_events"
