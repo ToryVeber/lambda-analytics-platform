@@ -1,6 +1,6 @@
-# S3 Object Storage Topology (MinIO Data Lake)
+# S3 Object Storage Topology (Garage Data Lake)
 
-This document specifies the bucket topology and directory partitioning strategy within our MinIO S3 object storage across the Medallion architecture layers.
+This document specifies the bucket topology and directory partitioning strategy within our Garage S3 object storage across the Medallion architecture layers.
 
 ---
 

@@ -4,7 +4,7 @@
 Landing zone for daily raw ad platform snapshots and database dumps stored as immutable files in S3.
 
 ### Table: `bronze.ad_spend_raw`
-* **Storage Engine:** MinIO S3 Raw Storage (JSON / CSV format)
+* **Storage Engine:** Garage S3 Raw Storage (JSON / CSV format)
 * **S3 Location:** 
   - `s3://ecom-platform-bronze/google_ads_api/`
   - `s3://ecom-platform-bronze/yandex_direct_api/`
@@ -21,7 +21,7 @@ Landing zone for daily raw ad platform snapshots and database dumps stored as im
   | `extraction_date` | Date | NOT NULL | The daily batch date when this data was logged or fetched. |
 
 ### Table: `bronze.crm_orders_raw`
-* **Storage Engine:** MinIO S3 Raw Storage (CSV format dump from PostgreSQL)
+* **Storage Engine:** Garage S3 Raw Storage (CSV format dump from PostgreSQL)
 * **S3 Location:** `s3://ecom-platform-bronze/crm_postgres_dump/orders/`
 * **Schema:**
 
@@ -38,7 +38,7 @@ Landing zone for daily raw ad platform snapshots and database dumps stored as im
 Apache Spark normalizes financial metrics, converts currencies to USD, deduplicates records, and stores them in the Apache Iceberg transaction format.
 
 ### Table: `silver.marketing_spend_unified`
-* **Storage Engine:** Apache Iceberg over MinIO S3
+* **Storage Engine:** Apache Iceberg over Garage S3
 * **Schema:**
 
   | Column Name | Data Type | Nullable | Description |
@@ -50,7 +50,7 @@ Apache Spark normalizes financial metrics, converts currencies to USD, deduplica
   | `report_date` | Date | NOT NULL | The specific calendar date for the marketing metrics. |
 
 ### Table: `silver.orders_historical`
-* **Storage Engine:** Apache Iceberg over MinIO S3
+* **Storage Engine:** Apache Iceberg over Garage S3
 * **Schema:**
 
   | Column Name | Data Type | Nullable | Description |
