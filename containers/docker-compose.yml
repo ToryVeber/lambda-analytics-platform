@@ -1,0 +1,122 @@
+version: '3.8'
+
+# Изолированная сетевая топология проекта
+networks:
+  frontend_net:
+    name: ecom_frontend_network
+  backend_net:
+    name: ecom_backend_network
+
+services:
+  # ==========================================
+  # LAYER 1: DATA INGESTION (FRONTEND CONTOUR)
+  # ==========================================
+
+  # Коллектор логов Snowplow (Принимает батчи с сайта из Windows)
+  snowplow-micro:
+    image: snowplow/snowplow-micro:1.5.0
+    container_name: ecom_snowplow_collector
+    ports:
+      - "8082:8080"  # Порт 8082 на Windows проброшен к порту 8080 в контейнере (чтобы не занимать порт 8080 Airflow)
+    command: [
+      "--collector-config", "/config/micro.conf",
+      "--iglu", "/config/iglu.json"
+    ]
+    volumes:
+      - ./snowplow_config:/config
+    networks:
+      - frontend_net
+      - backend_net
+    depends_on:
+      - kafka
+    restart: unless-stopped
+
+  # Брокер сообщений Apache Kafka ( KRaft Mode ) — работает мостом
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: ecom_kafka_broker
+    ports:
+      - "9092:9092"  # Внутренний порт для Docker сети (Spark)
+      - "9094:9094"  # Внешний порт для внешних скриптов/генераторов
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093,EXTERNAL://0.0.0.0:9094'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_OFFER_MAX_MSGS: 1000
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - frontend_net
+      - backend_net
+    restart: unless-stopped
+
+  # Автоматический инициализатор топиков Kafka
+  init-kafka:
+    image: apache/kafka:3.7.0
+    container_name: ecom_kafka_init
+    depends_on:
+      - kafka
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: |
+      "
+      kafka-topics.sh --bootstrap-server kafka:9092 --list
+      echo 'Creating snowplow_web_events topic...'
+      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic snowplow_web_events --partitions 3 --replication-factor 1
+      "
+    networks:
+      - backend_net
+
+  # ==========================================
+  # LAYER 2: STORAGE & ANALYTICS (BACKEND CONTOUR)
+  # ==========================================
+
+  # Наш современный объектный Дата Лейк (Rust S3) — полностью изолирован
+  garage:
+    image: dxflrs/garage:v0.9.4
+    container_name: ecom_data_lake_garage
+    command: server
+    ports:
+      - "3900:3900"  # S3 API порт для Spark / Iceberg
+      - "3903:3903"  # Административный интерфейс Garage
+    volumes:
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+      - ./garage.toml:/etc/garage.toml
+    environment:
+      - GARAGE_WATCH_CONFIG=1
+    networks:
+      - backend_net
+    restart: unless-stopped
+
+  # Аналитическая колоночная СУБД ClickHouse (Слой Gold)
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    container_name: ecom_analytics_clickhouse
+    ports:
+      - "8123:8123"  # HTTP интерфейс (для dbt, BI платформ и твоей Windows)
+      - "9000:9000"  # Native клиентский порт
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: supersecretchpassword123
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks:
+      - backend_net
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    restart: unless-stopped
+
+# Постоянные дисковые разделы (чтобы данные не стирались при перезапуске)
+volumes:
+  garage_meta:
+  garage_data:
+  kafka_data:
+  clickhouse_data:
