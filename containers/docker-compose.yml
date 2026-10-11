@@ -7,6 +7,9 @@ networks:
     name: ecom_backend_network
 
 services:
+  # ==========================================
+  # LAYER 1: DATA INGESTION (FRONTEND CONTOUR)
+  # ==========================================
 
   snowplow-micro:
     image: snowplow/snowplow-micro:1.5.0
@@ -58,11 +61,14 @@ services:
     command: |
       "
       kafka-topics.sh --bootstrap-server kafka:9092 --list
-      echo 'Creating snowplow_web_events topic...'
       kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic snowplow_web_events --partitions 3 --replication-factor 1
       "
     networks:
       - backend_net
+
+  # ==========================================
+  # LAYER 2: STORAGE & OLAP (BACKEND CONTOUR)
+  # ==========================================
 
   garage:
     image: dxflrs/garage:v0.9.4
@@ -101,8 +107,72 @@ services:
         hard: 262144
     restart: unless-stopped
 
+  # ==========================================
+  # LAYER 3: ORCHESTRATION (AIRFLOW CONTAINER)
+  # ==========================================
+
+  airflow:
+    image: apache/airflow:2.9.1-python3.11
+    container_name: ecom_orchestrator_airflow
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
+    volumes:
+      - ../airflow/dags:/opt/airflow/dags
+      - ../airflow/logs:/opt/airflow/logs
+      - ../dbt_platform:/opt/dbt_platform
+    command: standalone
+    networks:
+      - backend_net
+    depends_on:
+      - kafka
+      - clickhouse
+      - garage
+    restart: unless-stopped
+
+  # ==========================================
+  # LAYER 4: OBSERVABILITY & MONITORING
+  # ==========================================
+
+  akhq:
+    image: tchiotludo/akhq:0.25.0
+    container_name: ecom_monitoring_kafka_ui
+    ports:
+      - "8085:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            local-kafka:
+              properties:
+                bootstrap.servers: "kafka:9092"
+    networks:
+      - backend_net
+    depends_on:
+      - kafka
+
+  grafana:
+    image: grafana/grafana-oss:10.4.1
+    container_name: ecom_monitoring_grafana
+    ports:
+      - "3050:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=adminsupersecret123
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - backend_net
+    depends_on:
+      - clickhouse
+
 volumes:
   garage_meta:
   garage_data:
   kafka_data:
   clickhouse_data:
+  grafana_data:
